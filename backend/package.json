@@ -3,16 +3,28 @@
   "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
+<<<<<<< HEAD
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3"
+=======
+    "@types/bcrypt": "^5.0.2",
+    "@types/bun": "latest",
+    "@types/jsonwebtoken": "^9.0.10"
+>>>>>>> ddb848bb47b8cfa60f002081871fcba5581e62ef
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
+<<<<<<< HEAD
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0"
+=======
+    "bcrypt": "^6.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^4.0.2"
+>>>>>>> ddb848bb47b8cfa60f002081871fcba5581e62ef
   }
 }
