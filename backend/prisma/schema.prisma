@@ -35,13 +35,15 @@ model ApiKey {
 }
 
 model SaaSConfig {
-  id        String     @id @default(uuid())
-  createdAt DateTime   @default(now())
-  name      String
-  user      User       @relation(fields: [userId], references: [id])
-  userId    String
-  ApiKey    ApiKey[]
-  providers Provider[]
+  id           String     @id @default(uuid())
+  createdAt    DateTime   @default(now())
+  name         String
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String
+  BillingPlans Json
+  production   Boolean    @default(false)
+  ApiKey       ApiKey[]
+  providers    Provider[]
 }
 
 model Plan {
