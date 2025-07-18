@@ -15,15 +15,28 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
+  id           String         @id @default(uuid())
+  googleId     String         @unique
+  email        String         @unique
   username     String
   image        String?
-  passwordHash String
-  provider     Provider[]
+  passwordHash String?
   tenants      Tenant[]
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime       @default(now())
   SaaSConfig   SaaSConfig[]
+  RefreshToken RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique // The actual Google refresh token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model ApiKey {
@@ -46,6 +59,18 @@ model SaaSConfig {
   providers    Provider[]
 }
 
+model Provider {
+  id           String       @id @default(uuid())
+  createdAt    DateTime     @default(now())
+  saasConfigId String
+  saasConfig   SaaSConfig   @relation(fields: [saasConfigId], references: [id])
+  type         ProviderType
+  appId        String
+  secretKey    String
+
+  @@unique([saasConfigId, type])
+}
+
 model Plan {
   id             String   @id @default(uuid())
   name           String   @unique
@@ -64,7 +89,6 @@ model Tenant {
   name          String
   plan          Plan            @relation(fields: [planId], references: [id])
   planId        String
-  provider      Provider[]
   usageEvents   UsageEvent[]
   createdAt     DateTime        @default(now())
   EmailTemplate EmailTemplate[]
@@ -123,7 +147,9 @@ model Webhook {
   createdAt DateTime @default(now())
 }
 
-enum Provider {
+enum ProviderType {
   google
   github
+  apple
+  microsoft
 }
