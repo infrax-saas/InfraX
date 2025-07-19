@@ -27,7 +27,13 @@ export const initializeSaasConfigSchema = z.object({
   providers: ProviderConfigSchema.array()
 })
 
+export const addProviderSchema = z.object({
+  id: z.string(),
+  provider: ProviderConfigSchema
+})
 
 export type initializeSaasConfigOutputSchema = {
   message: string
 }
+
+

@@ -1,6 +1,7 @@
-import { Router, type Request, type Response } from "express";
+import e, { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
-import { initializeSaasConfigSchema } from "../types/saasConfigType"
+import { addProviderSchema, initializeSaasConfigSchema } from "../types/saasConfigType"
+import { findAncestor } from "typescript";
 
 export const saasRouter = Router();
 
@@ -67,7 +68,64 @@ saasRouter.post('/createSaas', async (req: Request, res: Response) => {
       message: "internal server error",
       resonse: null
     })
+  } finally {
+    await prisma.$disconnect();
   }
 
 })
+
+saasRouter.post('/addProvider', async (req: Request, res: Response) => {
+
+  const { data, error } = addProviderSchema.safeParse(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      code: 400,
+      message: 'Invalid body',
+      response: null
+    })
+  }
+
+  const { id, provider } = data;
+  const { appId, secretKey, type } = provider;
+
+  try {
+
+    const saas = await prisma.saaSConfig.findFirst({ where: { id } });
+    if (!saas) {
+      return res.status(400).json({
+        code: 400,
+        message: `No saas with id: ${id}`,
+        resonse: null
+      })
+    }
+
+    const provider = await prisma.provider.create({
+      data: {
+        type,
+        appId,
+        secretKey,
+        saasConfigId: id
+      }
+    })
+    return res.status(200).json({
+      code: 200,
+      message: "added provider",
+      resonse: provider.id
+    })
+
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
+  } finally {
+    await prisma.$disconnect();
+  }
+
+})
+
 
