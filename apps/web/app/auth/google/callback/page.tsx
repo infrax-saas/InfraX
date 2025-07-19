@@ -3,15 +3,11 @@
 import { InfraXAuthClient, User } from "@repo/sdk";
 import { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
-
-const client = new InfraXAuthClient({
-  googleClientId: "181396111505-jskgtqmbkjklrms5upcermme5vidubks.apps.googleusercontent.com",
-  redirectUri: "http://localhost:3000/auth/google/callback",
-  backendBaseUrl: "http://localhost:3001",
-});
+import { client } from "../../../client.ts";
 
 export default function GoogleCallbackPage() {
   const [error, setError] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,8 +23,22 @@ export default function GoogleCallbackPage() {
     h();
   }, []);
 
+  const getUser = async () => {
+    try {
+      const user = await client.getUser();
+      console.log(user);
+      setUser(user);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
   if (error) return <div style={{ color: 'red' }}>Error: {JSON.stringify(error)}</div>;
 
-  return <div>Handling Google login callback...</div>;
+  return <div>Handling Google login callback...
+    <button onClick={() => getUser()} >Get user</button>
+    {
+    }
+  </div>;
 }
 

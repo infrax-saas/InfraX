@@ -1,20 +1,14 @@
-import express from "express";
-import cors from "cors";
 import { prisma } from "../prisma/db";
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { OAuth2Client } from 'google-auth-library';
-
-const app = express();
-const PORT = 3001;
-
-app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true,
-}));
-app.use(express.json());
+import { Router } from "express";
+import cookie from "cookie";
+import { authMiddleware } from "./authmiddleware";
 
 
-app.post("/auth/google/callback", async (req, res) => {
+export const authRouter = Router();
+
+authRouter.post("/google/callback", async (req, res) => {
   const { code, codeVerifier, redirectUri } = req.body;
   console.log(code, codeVerifier, redirectUri);
   console.log(redirectUri);
@@ -23,7 +17,6 @@ app.post("/auth/google/callback", async (req, res) => {
   }
 
   try {
-    console.log('sending req to get token', process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -76,6 +69,14 @@ app.post("/auth/google/callback", async (req, res) => {
       expiresIn: "1h",
     });
 
+    res.setHeader("Set-Cookie", cookie.serialize("infrax_token", jwtToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60,
+    }));
+
     return res.json({
       token: jwtToken,
       user: {
@@ -91,8 +92,21 @@ app.post("/auth/google/callback", async (req, res) => {
   }
 });
 
+authRouter.get("/me", authMiddleware, async (req, res) => {
+  if (typeof req.user === "undefined") return res.status(500).json({ "message": "internal server error" })
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.sub },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      image: true,
+    },
+  });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json(user);
 });
+
 

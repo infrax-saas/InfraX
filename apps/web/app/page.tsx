@@ -1,13 +1,8 @@
 'use client'
 import { InfraXAuthClient, User } from "@repo/sdk";
 import { useEffect, useState } from "react";
+import { client } from "./client.ts";
 
-
-const authClient = new InfraXAuthClient({
-  googleClientId: "181396111505-jskgtqmbkjklrms5upcermme5vidubks.apps.googleusercontent.com",
-  redirectUri: "http://localhost:3000/auth/google/callback", // this page should run `handleGoogleRedirect`
-  backendBaseUrl: "http://localhost:3001",
-});
 export default function Home() {
 
   const [user, setUser] = useState<User | null>(null);
@@ -16,7 +11,7 @@ export default function Home() {
 
   const handleLogin = async () => {
     try {
-      await authClient.loginWithGoogle();
+      await client.loginWithGoogle();
     } catch (err: any) {
       setError(err.message || "Failed to initiate Google login.");
     }

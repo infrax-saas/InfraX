@@ -1,32 +1,31 @@
-import { type Request, type Response, type NextFunction } from 'express';
-import { verifyInfraXJwt } from './authutils';
+import type { Request, Response, NextFunction } from "express";
+import jwt, { type JwtPayload } from "jsonwebtoken";
+import cookie from "cookie";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        userId: string;
-        email: string;
-      };
+      user?: JwtPayload & { sub: string; email: string };
     }
   }
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
+export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  const cookies = cookie.parse(req.headers.cookie || "");
+  const token = cookies.infrax_token;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Unauthorized: No token provided or invalid format.' });
-  }
-
-  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: "Not authenticated" });
 
   try {
-    const payload = verifyInfraXJwt(token);
-    req.user = { userId: payload.userId, email: payload.email };
-    next(); 
-  } catch (error: any) {
-    console.error('InfraX JWT verification failed:', error);
-    return res.status(401).json({ message: `Unauthorized: ${error.message}` });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as jwt.JwtPayload & {
+      sub: string;
+      email: string;
+    };
+
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
-};
+}
+

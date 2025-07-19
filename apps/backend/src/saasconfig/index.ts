@@ -1,28 +1,23 @@
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
-import { CODES, type OutputSchema } from "../types/generalTypes";
-import { initializeSaasConfigSchema, type initializeSaasConfigOutputSchema } from "../types/saasConfigType"
+import { initializeSaasConfigSchema } from "../types/saasConfigType"
 
-// before calling this fxn call an authentication fxn and pass userid as prop here
-export const initalizeSaaS = async (props: any): Promise<OutputSchema<initializeSaasConfigOutputSchema>> => {
+export const saasRouter = Router();
 
-  const { data, error } = initializeSaasConfigSchema.safeParse(props);
+saasRouter.post('/createSaas', async (req: Request, res: Response) => {
+  const { data, error } = initializeSaasConfigSchema.safeParse(req.body);
 
   if (error) {
-    // handle error
-    return {
-      code: CODES.BADREQUEST,
-      error: error,
-      success: false,
-      response: {
-        message: "InvalidType"
-      }
-    }
+    return res.status(400).json({
+      code: 400,
+      message: 'Invalid body',
+      response: null
+    })
   }
 
   const { name, userId, providers } = data;
 
   try {
-
     const saas = await prisma.saaSConfig.findFirst({
       where: {
         userId,
@@ -31,14 +26,11 @@ export const initalizeSaaS = async (props: any): Promise<OutputSchema<initialize
     })
 
     if (saas) {
-      // saas with same name present
-      return {
-        code: CODES.BADREQUEST,
-        success: false,
-        response: {
-          message: "SaaSNameNotAvailable"
-        }
-      }
+      return res.status(400).json({
+        code: 400,
+        message: "saas name not available",
+        response: null
+      })
     }
 
     const createSaaS = await prisma.saaSConfig.create({
@@ -49,7 +41,6 @@ export const initalizeSaaS = async (props: any): Promise<OutputSchema<initialize
       }
     })
 
-    // add providers in providers table
     await Promise.all(
       providers.map(provider =>
         prisma.provider.create({
@@ -63,25 +54,20 @@ export const initalizeSaaS = async (props: any): Promise<OutputSchema<initialize
       )
     );
 
-    return {
-      code: CODES.OK,
-      success: true,
-      response: {
-        message: "success"
-      }
-    }
+    return res.status(201).json({
+      code: 201,
+      message: "created",
+      resonse: createSaaS.id
+    })
 
   } catch (error) {
     console.log(error);
-    return {
-      code: CODES.INTERNALSERVERERROR,
-      error: Error("INTERNALSERVERERROR"),
-      success: false,
-      response: {
-        message: "INTERNALSERVERERROR"
-      }
-    }
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
   }
 
+})
 
-}

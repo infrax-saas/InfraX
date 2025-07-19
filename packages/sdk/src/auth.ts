@@ -60,7 +60,7 @@ export class InfraXAuthClient {
       throw new Error("Invalid state parameter.");
     }
 
-    const response = await fetch(`${this.backendBaseUrl}/auth/google/callback`, {
+    const response = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/google/callback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -80,6 +80,25 @@ export class InfraXAuthClient {
     const data = await response.json();
     return data;
   }
+
+  async getUser(): Promise<{
+    id: string;
+    email: string;
+    username: string;
+    image?: string;
+  } | null> {
+    try {
+      const res = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/me`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw Error("user not found");
+      return await res.json();
+    } catch (err) {
+      console.error("getUser failed:", err);
+      return null;
+    }
+  }
+
 
   private generateRandomString(length: number): string {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
