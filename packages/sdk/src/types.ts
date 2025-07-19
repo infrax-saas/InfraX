@@ -3,7 +3,6 @@ export interface User {
   email: string;
   username: string;
   image?: string;
-  googleId: string;
 }
 
 export interface AuthTokens {

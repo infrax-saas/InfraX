@@ -1,11 +1,11 @@
 'use client'
 
-import { InfraXAuthClient, User } from "@repo/sdk";
+import { User } from "@repo/sdk";
 import { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { client } from "../../../client";
 
-export default function GoogleCallbackPage() {
+export default function GithubCallbackPage() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
@@ -14,7 +14,7 @@ export default function GoogleCallbackPage() {
     console.log("insdei useEffect");
     const h = async () => {
       try {
-        const user = await client.handleGoogleRedirect();
+        const user = await client.handleGitHubRedirect();
         console.log(user);
       } catch (error) {
         console.log(error);
@@ -27,7 +27,7 @@ export default function GoogleCallbackPage() {
     try {
       const user = await client.getUser();
       console.log(user);
-      user && setUser(user);
+      setUser(user);
     } catch (err) {
       console.log(err);
     }
@@ -35,10 +35,11 @@ export default function GoogleCallbackPage() {
 
   if (error) return <div style={{ color: 'red' }}>Error: {JSON.stringify(error)}</div>;
 
-  return <div>Handling Google login callback...
+  return <div>Handling Github login callback...
     <button onClick={() => getUser()} >Get user</button>
     {
     }
   </div>;
 }
+
 

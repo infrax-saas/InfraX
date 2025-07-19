@@ -1,7 +1,6 @@
-import e, { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
 import { addProviderSchema, initializeSaasConfigSchema } from "../types/saasConfigType"
-import { findAncestor } from "typescript";
 
 export const saasRouter = Router();
 
@@ -75,7 +74,6 @@ saasRouter.post('/createSaas', async (req: Request, res: Response) => {
 })
 
 saasRouter.post('/addProvider', async (req: Request, res: Response) => {
-
   const { data, error } = addProviderSchema.safeParse(req.body);
 
   if (error) {

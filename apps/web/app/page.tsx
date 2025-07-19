@@ -1,7 +1,7 @@
 'use client'
-import { InfraXAuthClient, User } from "@repo/sdk";
-import { useEffect, useState } from "react";
-import { client } from "./client.ts";
+import { User } from "@repo/sdk";
+import { useState } from "react";
+import { client } from "./client";
 
 export default function Home() {
 
@@ -16,6 +16,14 @@ export default function Home() {
       setError(err.message || "Failed to initiate Google login.");
     }
   };
+
+  const handleGithubLogin = async () => {
+    try {
+      await client.loginWithGitHub();
+    } catch (err) {
+      console.log(err);
+    }
+  }
 
   if (loading) {
     return <div>Loading authentication...</div>;
@@ -36,6 +44,7 @@ export default function Home() {
         <div>
           <p>You are not logged in.</p>
           <button onClick={handleLogin}>Login with Google</button>
+          <button onClick={handleGithubLogin} >login with github</button>
         </div>
       )}
     </div>

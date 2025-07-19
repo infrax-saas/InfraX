@@ -1,19 +1,77 @@
 export interface InfraXAuthClientOptions {
   googleClientId: string;
+  githubClientId: string;
   redirectUri: string;
   backendBaseUrl: string;
 }
 
 export class InfraXAuthClient {
   private googleClientId: string;
+  private githubClientId: string;
   private redirectUri: string;
   private backendBaseUrl: string;
 
   constructor(options: InfraXAuthClientOptions) {
     this.googleClientId = options.googleClientId;
+    this.githubClientId = options.githubClientId;
     this.redirectUri = options.redirectUri;
     this.backendBaseUrl = options.backendBaseUrl;
   }
+
+  async loginWithGitHub() {
+    const state = this.generateRandomString(32);
+    localStorage.setItem("infrax_state", state);
+
+    const params = new URLSearchParams({
+      client_id: this.githubClientId,
+      redirect_uri: this.redirectUri,
+      scope: "read:user user:email",
+      state,
+      allow_signup: "true",
+    });
+
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    window.location.href = githubAuthUrl;
+  }
+
+
+  async handleGitHubRedirect() {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const returnedState = url.searchParams.get("state");
+
+    const savedState = localStorage.getItem("infrax_state");
+    localStorage.removeItem("infrax_state");
+
+    if (!code || !returnedState || !savedState) {
+      throw new Error("Missing OAuth data in redirect.");
+    }
+
+    if (returnedState !== savedState) {
+      throw new Error("Invalid state parameter.");
+    }
+
+    const response = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/github/callback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        code,
+        redirectUri: this.redirectUri,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to authenticate with backend.");
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+
 
   async loginWithGoogle() {
     const codeVerifier = this.generateRandomString(64);
