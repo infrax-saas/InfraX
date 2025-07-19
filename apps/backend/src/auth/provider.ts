@@ -1,11 +1,24 @@
 import { prisma } from "../prisma/db";
-import jwt, { type JwtPayload } from "jsonwebtoken";
-import { OAuth2Client } from 'google-auth-library';
+import jwt from "jsonwebtoken";
+import { auth, CodeChallengeMethod, OAuth2Client } from 'google-auth-library';
 import { Router, type Request, type Response } from "express";
 import cookie from "cookie";
 import { authMiddleware } from "./authmiddleware";
 import { id } from "zod/locales";
-import { nullish } from "zod";
+import { loginSchema, registerSchema } from "../types/authType";
+import bcrypt from "bcrypt";
+
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+export async function comparePassword(
+  plainPassword: string,
+  hashedPassword: string
+): Promise<boolean> {
+  return await bcrypt.compare(plainPassword, hashedPassword);
+}
 
 export const authRouter = Router();
 
@@ -74,6 +87,7 @@ authRouter.post("/google/callback", async (req, res) => {
           email,
           username: name,
           image,
+          saasId: saasid,
           RefreshToken: {
             create: {
               token: tokenData.refresh_token!,
@@ -108,6 +122,8 @@ authRouter.post("/google/callback", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal Server Error" });
+  } finally {
+    await prisma.$disconnect();
   }
 });
 
@@ -193,6 +209,7 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
           email,
           username,
           image,
+          saasId: saasid
         },
       });
     }
@@ -226,8 +243,155 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
       message: "internal server error",
       response: null
     });
+  } finally {
+    await prisma.$disconnect();
+  }
+
+})
+
+authRouter.post("/signup", async (req: Request, res: Response) => {
+
+  const { data, error } = registerSchema.safeParse(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      code: 400,
+      message: 'Invalid body',
+      response: null
+    })
+  }
+
+  const { username, email, password, saasId } = data;
+
+  try {
+
+    const user = await prisma.user.findFirst({
+      where: {
+        username,
+        saasId
+      }
+    })
+
+    if (user) {
+      return res.status(400).json({
+        code: 400,
+        message: `user already present`,
+        resonse: null
+      })
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const createUser = await prisma.user.create({
+      data: {
+        username,
+        email,
+        passwordHash: hashedPassword,
+        saasId
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: "created user",
+      response: createUser.id
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
+  } finally {
+    await prisma.$disconnect();
+  }
+
+})
+
+authRouter.post("/signin", async (req: Request, res: Response) => {
+
+  const { data, error } = loginSchema.safeParse(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      code: 400,
+      message: 'Invalid body',
+      response: null
+    })
+  };
+
+  try {
+    const { email, password, saasId } = data;
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email,
+        saasId
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        code: 404,
+        message: "user not found",
+        resonse: null
+      })
+    }
+
+    if (!user.passwordHash) {
+      return res.status(400).json({
+        code: 400,
+        message: "wrong method for user",
+        resonse: null
+      })
+    }
+
+    const isPasswordCorrect = await comparePassword(password, user.passwordHash);
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        code: 401,
+        message: "wrong password",
+        response: null
+      })
+    }
+
+    const jwtToken = jwt.sign({ sub: user.id, email: user.email }, process.env.JWT_SECRET!, {
+      expiresIn: "1h",
+    });
+
+    res.setHeader("Set-Cookie", cookie.serialize("infrax_token", jwtToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60,
+    }));
+
+    return res.json({
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        image: user.image,
+        username: user.username,
+      },
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
+  } finally {
+    await prisma.$disconnect();
   }
 })
+
 
 authRouter.get("/me", authMiddleware, async (req, res) => {
   if (typeof req.user === "undefined") return res.status(500).json({ "message": "internal server error" })

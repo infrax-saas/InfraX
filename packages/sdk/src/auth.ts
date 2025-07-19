@@ -3,6 +3,7 @@ export interface InfraXAuthClientOptions {
   githubClientId: string;
   redirectUri: string;
   backendBaseUrl: string;
+  appId: string;
 }
 
 export class InfraXAuthClient {
@@ -10,12 +11,49 @@ export class InfraXAuthClient {
   private githubClientId: string;
   private redirectUri: string;
   private backendBaseUrl: string;
+  private appId: string;
 
   constructor(options: InfraXAuthClientOptions) {
     this.googleClientId = options.googleClientId;
     this.githubClientId = options.githubClientId;
     this.redirectUri = options.redirectUri;
     this.backendBaseUrl = options.backendBaseUrl;
+    this.appId = options.appId;
+  }
+
+  async registerUser(username: string, password: string, email: string) {
+    const response = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        username,
+        password,
+        email,
+        saasId: this.appId
+      }),
+    });
+    const data = response.json();
+    return data;
+  }
+
+  async signinUser(email: string, password: string) {
+    const response = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/signin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        password,
+        email,
+        saasId: this.appId
+      }),
+    });
+    const data = response.json();
+    return data;
   }
 
   async loginWithGitHub() {

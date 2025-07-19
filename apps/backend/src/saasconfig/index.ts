@@ -20,7 +20,7 @@ saasRouter.post('/createSaas', async (req: Request, res: Response) => {
   try {
     const saas = await prisma.saaSConfig.findFirst({
       where: {
-        userId,
+        tenantId: userId,
         name
       }
     })
@@ -36,7 +36,7 @@ saasRouter.post('/createSaas', async (req: Request, res: Response) => {
     const createSaaS = await prisma.saaSConfig.create({
       data: {
         name,
-        userId,
+        tenantId: userId,
         BillingPlans: ``
       }
     })
