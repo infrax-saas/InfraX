@@ -243,6 +243,44 @@ saasRouter.post("/getSaaSByID", requireAuth, async (req: Request, res: Response)
       where: {
         id
       },
+      include: {
+        _count: {
+          select: {
+            User: true
+          }
+        }
+      }
+    })
+
+    if (!saas) {
+      return res.status(404).json({
+        code: 404,
+        message: `No saas with id:  ${id}`,
+        resonse: null
+      })
+    }
+
+    const apikeys = await prisma.apiKey.findMany({
+      where: {
+        saasId: id
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: "saas found",
+      response: {
+        saas: {
+          id: saas.id,
+          name: saas.name,
+          description: saas.description,
+          category: saas.category,
+          status: saas.status,
+          users: saas._count.User,
+          createdAt: saas.createdAt
+        },
+        apikeys
+      }
     })
 
   } catch (error) {

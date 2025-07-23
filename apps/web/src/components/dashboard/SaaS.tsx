@@ -1,21 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Settings, ExternalLink, Calendar, Users, Activity } from 'lucide-react';
 import CreateAppDialog from './CreateAppDialog';
-
-interface App {
-  id: string;
-  name: string;
-  description: string;
-  status: 'active' | 'inactive' | 'developing';
-  createdAt: string;
-  users: number;
-  integrations: number;
-  category: string;
-}
+import type { AppI } from '../../type';
+import { useNavigate } from 'react-router-dom';
 
 const AppsPage: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [apps, setApps] = useState<App[]>([]);
+  const [apps, setApps] = useState<AppI[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
 
@@ -32,7 +24,7 @@ const AppsPage: React.FC = () => {
         const status = response.status;
         const data = await response.json();
 
-        const apps = data.response as App[];
+        const apps = data.response as AppI[];
 
         console.log(data);
 
@@ -121,6 +113,10 @@ const AppsPage: React.FC = () => {
     }
   };
 
+  const handleAppClick = (appId: string) => {
+    navigate(`/app?id=${appId}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Header */}
@@ -191,7 +187,8 @@ const AppsPage: React.FC = () => {
           {apps.map((app) => (
             <div
               key={app.id}
-              className="bg-gray-900/50 rounded-xl border border-gray-800 hover:border-gray-700 hover:bg-gray-900/70 transition-all duration-200 backdrop-blur-sm group"
+              onClick={() => handleAppClick(app.id)}
+              className="bg-gray-900/50 rounded-xl border cursor-pointer border-gray-800 hover:border-gray-700 hover:bg-gray-900/70 transition-all duration-200 backdrop-blur-sm group"
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
