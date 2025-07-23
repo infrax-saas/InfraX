@@ -1,10 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
 import { addProviderSchema, initializeSaasConfigSchema } from "../types/saasConfigType"
+import { requireAuth } from "../auth/authmiddleware";
 
 export const saasRouter = Router();
 
-saasRouter.post('/createSaas', async (req: Request, res: Response) => {
+saasRouter.post('/createSaas', requireAuth, async (req: Request, res: Response) => {
+  console.log("success here");
   const { data, error } = initializeSaasConfigSchema.safeParse(req.body);
 
   if (error) {

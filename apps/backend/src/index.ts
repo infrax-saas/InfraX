@@ -1,19 +1,26 @@
 import express from "express";
 import cors from "cors";
-import { authRouter } from "./auth/provider";
+import { providerAuthRouter } from "./auth/provider";
 import { saasRouter } from "./saasconfig";
+import { authRouter } from "./auth";
+import { setupPassport } from "./auth/passport";
+import passport from "passport";
 
 const PORT = process.env.PORT || 3001;
 
 const app = express();
 
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: ["http://localhost:5173"],
   credentials: true,
 }));
 app.use(express.json());
 
-app.use('/api/v1/provider/auth', authRouter);
+setupPassport();
+app.use(passport.initialize())
+
+app.use('/api/v1/provider/auth', providerAuthRouter);
+app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/saasconfig', saasRouter);
 
 app.listen(PORT, () => {

@@ -20,9 +20,9 @@ export async function comparePassword(
   return await bcrypt.compare(plainPassword, hashedPassword);
 }
 
-export const authRouter = Router();
+export const providerAuthRouter = Router();
 
-authRouter.post("/google/callback", async (req, res) => {
+providerAuthRouter.post("/google/callback", async (req, res) => {
   const { code, codeVerifier, redirectUri, saasid } = req.body;
   console.log(code, codeVerifier, redirectUri);
   console.log(redirectUri);
@@ -127,7 +127,7 @@ authRouter.post("/google/callback", async (req, res) => {
   }
 });
 
-authRouter.post("/github/callback", async (req: Request, res: Response) => {
+providerAuthRouter.post("/github/callback", async (req: Request, res: Response) => {
   const { code, redirectUri, saasid } = req.body;
 
   if (!code || !redirectUri) {
@@ -249,7 +249,7 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
 
 })
 
-authRouter.post("/signup", async (req: Request, res: Response) => {
+providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
 
   const { data, error } = registerSchema.safeParse(req.body);
 
@@ -310,7 +310,7 @@ authRouter.post("/signup", async (req: Request, res: Response) => {
 
 })
 
-authRouter.post("/signin", async (req: Request, res: Response) => {
+providerAuthRouter.post("/signin", async (req: Request, res: Response) => {
 
   const { data, error } = loginSchema.safeParse(req.body);
 
@@ -393,7 +393,7 @@ authRouter.post("/signin", async (req: Request, res: Response) => {
 })
 
 
-authRouter.get("/me", authMiddleware, async (req, res) => {
+providerAuthRouter.get("/me", authMiddleware, async (req, res) => {
   if (typeof req.user === "undefined") return res.status(500).json({ "message": "internal server error" })
   const user = await prisma.user.findUnique({
     where: { id: req.user.sub },
