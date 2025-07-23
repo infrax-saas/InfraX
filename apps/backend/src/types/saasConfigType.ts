@@ -1,5 +1,23 @@
 import z from "zod";
 
+enum Category {
+  Productivity = "Productivity",
+  Analytics = "Analytics",
+  Ecommerce = "Ecommerce",
+  Communication = "Communication",
+  Finance = "Finance",
+  AIML = "AIML",
+  CRM = "CRM",
+  Marketing = "Marketing",
+  Other = "Other",
+}
+
+enum Status {
+  active = "active",
+  inactive = "inactive",
+  developing = "developing",
+}
+
 export const billingPlanSchema = z.object({
   name: z.string(),
   price: z.number(),
@@ -22,10 +40,12 @@ export const ProviderConfigSchema = z.object({
 
 export const initializeSaasConfigSchema = z.object({
   name: z.string(),
-  userId: z.string(),
+  description: z.string(),
+  category: z.nativeEnum(Category),
+  status: z.nativeEnum(Status),
   billing: billingPlansSchema,
   providers: ProviderConfigSchema.array()
-})
+});
 
 export const addProviderSchema = z.object({
   id: z.string(),
@@ -36,4 +56,6 @@ export type initializeSaasConfigOutputSchema = {
   message: string
 }
 
-
+export const getSaaSByIDConfigSchema = z.object({
+  id: z.string()
+})

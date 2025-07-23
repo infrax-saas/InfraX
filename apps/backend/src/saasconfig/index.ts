@@ -1,13 +1,20 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
-import { addProviderSchema, initializeSaasConfigSchema } from "../types/saasConfigType"
+import { addProviderSchema, getSaaSByIDConfigSchema, initializeSaasConfigSchema } from "../types/saasConfigType"
 import { requireAuth } from "../auth/authmiddleware";
+import { randomBytes } from "crypto";
+
+const generateAPIKey = (): string => {
+  return randomBytes(32).toString("hex");
+}
 
 export const saasRouter = Router();
 
 saasRouter.post('/createSaas', requireAuth, async (req: Request, res: Response) => {
-  console.log("success here");
+  const { email } = req.user!;
   const { data, error } = initializeSaasConfigSchema.safeParse(req.body);
+
+  console.log(data, email, error);
 
   if (error) {
     return res.status(400).json({
@@ -17,12 +24,24 @@ saasRouter.post('/createSaas', requireAuth, async (req: Request, res: Response) 
     })
   }
 
-  const { name, userId, providers } = data;
+  console.log('here');
+
+  const { name, providers, description, category, status } = data;
 
   try {
+
+    const appuser = await prisma.appUser.findFirst({ where: { email } });
+    if (!appuser) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+
     const saas = await prisma.saaSConfig.findFirst({
       where: {
-        tenantId: userId,
+        appUserId: appuser.id,
         name
       }
     })
@@ -38,8 +57,20 @@ saasRouter.post('/createSaas', requireAuth, async (req: Request, res: Response) 
     const createSaaS = await prisma.saaSConfig.create({
       data: {
         name,
-        tenantId: userId,
+        description,
+        category,
+        status,
+        appUserId: appuser.id,
         BillingPlans: ``
+      }
+    })
+
+    const key = generateAPIKey();
+
+    await prisma.apiKey.create({
+      data: {
+        key,
+        saasId: createSaaS.id
       }
     })
 
@@ -128,4 +159,100 @@ saasRouter.post('/addProvider', async (req: Request, res: Response) => {
 
 })
 
+saasRouter.get("/getAllSaaS", requireAuth, async (req: Request, res: Response) => {
+  try {
 
+    const { email } = req.user!;
+
+    console.log(email);
+
+    const appuser = await prisma.appUser.findFirst({
+      where: {
+        email
+      }
+    })
+
+    if (!appuser) {
+      return res.status(400).json({
+        code: 400,
+        message: `No user with ${email} email`,
+        resonse: null
+      })
+    }
+
+    const saas = await prisma.saaSConfig.findMany({
+      where: {
+        appUserId: appuser.id
+      },
+      include: {
+        _count: {
+          select: {
+            User: true,
+          },
+        },
+      },
+    });
+
+    const response = saas.map(s => {
+      return {
+        id: s.id,
+        name: s.name,
+        createdAt: s.createdAt,
+        description: s.description,
+        category: s.category,
+        status: s.category,
+        integrations: 0,
+        users: s._count.User,
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      messae: 'saas',
+      response
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
+  } finally {
+    await prisma.$disconnect();
+  }
+})
+
+saasRouter.post("/getSaaSByID", requireAuth, async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = getSaaSByIDConfigSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+
+    const id = data.id;
+
+    const saas = await prisma.saaSConfig.findFirst({
+      where: {
+        id
+      },
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
+  } finally {
+    await prisma.$disconnect();
+  }
+})

@@ -5,7 +5,7 @@ import cookie from "cookie";
 declare global {
   namespace Express {
     interface Request {
-      user?: JwtPayload & { sub: string; email: string };
+      user?: JwtPayload & { id: string; email: string };
     }
   }
 }
@@ -18,7 +18,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as jwt.JwtPayload & {
-      sub: string;
+      id: string;
       email: string;
     };
 

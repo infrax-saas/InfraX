@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Settings, ExternalLink, Calendar, Users, Activity } from 'lucide-react';
 import CreateAppDialog from './CreateAppDialog';
 
@@ -15,48 +15,96 @@ interface App {
 
 const AppsPage: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [apps, setApps] = useState<App[]>([
-    {
-      id: '1',
-      name: 'TaskFlow Pro',
-      description: 'Project management and team collaboration platform',
-      status: 'active',
-      createdAt: '2024-01-15',
-      users: 1250,
-      integrations: 8,
-      category: 'Productivity'
-    },
-    {
-      id: '2',
-      name: 'DataViz Analytics',
-      description: 'Business intelligence and data visualization tool',
-      status: 'active',
-      createdAt: '2024-02-20',
-      users: 890,
-      integrations: 12,
-      category: 'Analytics'
-    },
-    {
-      id: '3',
-      name: 'ChatBot Builder',
-      description: 'AI-powered customer service automation',
-      status: 'developing',
-      createdAt: '2024-03-10',
-      users: 0,
-      integrations: 3,
-      category: 'AI/ML'
-    }
-  ]);
+  const [apps, setApps] = useState<App[]>([]);
 
-  const handleCreateApp = (newApp: Omit<App, 'id' | 'createdAt' | 'users' | 'integrations'>) => {
-    const app: App = {
-      ...newApp,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split('T')[0],
-      users: 0,
-      integrations: 0
-    };
-    setApps([...apps, app]);
+  useEffect(() => {
+
+    const getApps = async () => {
+      try {
+        const authToken = localStorage.getItem('token-infrax-appuser');
+        const response = await fetch("http://localhost:3001/api/v1/saasconfig/getAllSaaS", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`,
+          }
+        });
+        const status = response.status;
+        const data = await response.json();
+
+        const apps = data.response as App[];
+
+        console.log(data);
+
+        if (status === 200) {
+          setApps(apps);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    getApps();
+
+  }, []);
+
+  const handleCreateApp = async (newApp: { name: string, description: string, category: string, status: string }) => {
+    const authToken = localStorage.getItem('token-infrax-appuser');
+    console.log(newApp);
+    try {
+      const response = await fetch("http://localhost:3001/api/v1/saasconfig/createSaas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          name: newApp.name,
+          description: newApp.description,
+          category: newApp.category,
+          status: newApp.status,
+          providers: [],
+          billing: {
+            plansLength: 1,
+            plans: [
+              {
+                name: "Free Plan",
+                price: 0,
+                description: "Basic access",
+                features: ["Feature A", "Feature B"]
+              }
+            ]
+          }
+        })
+      });
+      const status = response.status;
+      const data = await response.json();
+
+      if (status === 401) {
+        console.log("unauthorized", data.message);
+        return;
+      } else if (status === 400) {
+        console.log("bad req", data.message);
+        return;
+      }
+
+      const getApps = await fetch("http://localhost:3001/api/v1/saasconfig/getAllSaaS", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        }
+      });
+      const getAppsStatus = getApps.status;
+      const getAppsData = await response.json();
+
+      if (getAppsStatus === 200) {
+        setApps(prev => [...prev, getAppsData.response]);
+      }
+
+    } catch (error) {
+      console.log(error);
+    }
+
     setIsCreateDialogOpen(false);
   };
 

@@ -64,14 +64,16 @@ model SaaSConfig {
   id           String     @id @default(uuid())
   createdAt    DateTime   @default(now())
   name         String
-  tenantId     String
-  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  description  String
+  category     Category
+  status       Status
   BillingPlans Json
   production   Boolean    @default(false)
   ApiKey       ApiKey[]
   providers    Provider[]
   User         User[]
-  AppUser      AppUser[]
+  AppUser      AppUser    @relation(fields: [appUserId], references: [id])
+  appUserId    String
 }
 
 model Provider {
@@ -110,7 +112,6 @@ model Tenant {
   StorageObject StorageObject[]
   Integration   Integration[]
   Webhook       Webhook[]
-  SaaSConfig    SaaSConfig[]
 }
 
 model UsageEvent {
@@ -168,4 +169,22 @@ enum ProviderType {
   github
   apple
   microsoft
+}
+
+enum Category {
+  Productivity
+  Analytics
+  Ecommerce
+  Communication
+  Finance
+  AIML
+  CRM
+  Marketing
+  Other
+}
+
+enum Status {
+  active
+  inactive
+  developing
 }

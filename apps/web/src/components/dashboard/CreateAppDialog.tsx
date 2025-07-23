@@ -41,7 +41,6 @@ const CreateAppDialog: React.FC<CreateAppDialogProps> = ({ isOpen, onClose, onSu
     }
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     onSubmit(formData);
     setFormData({ name: '', description: '', status: 'developing', category: '' });
