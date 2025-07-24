@@ -90,7 +90,7 @@ saasRouter.post('/createSaas', requireAuth, async (req: Request, res: Response) 
     return res.status(201).json({
       code: 201,
       message: "created",
-      resonse: createSaaS.id
+      response: createSaaS.id
     })
 
   } catch (error) {
@@ -98,15 +98,13 @@ saasRouter.post('/createSaas', requireAuth, async (req: Request, res: Response) 
     return res.status(500).json({
       code: 500,
       message: "internal server error",
-      resonse: null
+      response: null
     })
-  } finally {
-    await prisma.$disconnect();
   }
 
 })
 
-saasRouter.post('/addProvider', async (req: Request, res: Response) => {
+saasRouter.post('/addProvider', requireAuth, async (req: Request, res: Response) => {
   const { data, error } = addProviderSchema.safeParse(req.body);
 
   if (error) {
@@ -127,7 +125,7 @@ saasRouter.post('/addProvider', async (req: Request, res: Response) => {
       return res.status(400).json({
         code: 400,
         message: `No saas with id: ${id}`,
-        resonse: null
+        response: null
       })
     }
 
@@ -142,7 +140,7 @@ saasRouter.post('/addProvider', async (req: Request, res: Response) => {
     return res.status(200).json({
       code: 200,
       message: "added provider",
-      resonse: provider.id
+      response: provider.id
     })
 
 
@@ -151,10 +149,8 @@ saasRouter.post('/addProvider', async (req: Request, res: Response) => {
     return res.status(500).json({
       code: 500,
       message: "internal server error",
-      resonse: null
+      response: null
     })
-  } finally {
-    await prisma.$disconnect();
   }
 
 })
@@ -176,7 +172,7 @@ saasRouter.get("/getAllSaaS", requireAuth, async (req: Request, res: Response) =
       return res.status(400).json({
         code: 400,
         message: `No user with ${email} email`,
-        resonse: null
+        response: null
       })
     }
 
@@ -217,10 +213,8 @@ saasRouter.get("/getAllSaaS", requireAuth, async (req: Request, res: Response) =
     return res.status(500).json({
       code: 500,
       message: "internal server error",
-      resonse: null
+      response: null
     })
-  } finally {
-    await prisma.$disconnect();
   }
 })
 
@@ -256,7 +250,7 @@ saasRouter.post("/getSaaSByID", requireAuth, async (req: Request, res: Response)
       return res.status(404).json({
         code: 404,
         message: `No saas with id:  ${id}`,
-        resonse: null
+        response: null
       })
     }
 
@@ -288,9 +282,44 @@ saasRouter.post("/getSaaSByID", requireAuth, async (req: Request, res: Response)
     return res.status(500).json({
       code: 500,
       message: "internal server error",
-      resonse: null
+      response: null
     })
-  } finally {
-    await prisma.$disconnect();
+  }
+})
+
+saasRouter.post("/getAllProviders", requireAuth, async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = getSaaSByIDConfigSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+
+    const id = data.id;
+
+    const providers = await prisma.provider.findMany({
+      where: {
+        saasConfigId: id
+      }
+    });
+
+    return res.status(200).json({
+      code: 200,
+      meesage: "providers found",
+      response: providers
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      response: null
+    })
   }
 })

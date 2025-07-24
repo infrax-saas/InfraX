@@ -13,7 +13,7 @@ export interface AuthProviderI {
   id: string;
   name: string;
   enabled: boolean;
-  clientId?: string;
+  clientID?: string;
   clientSecret?: string;
   icon: string;
 }

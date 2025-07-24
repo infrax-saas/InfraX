@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -27,27 +21,27 @@ model AppUser {
 
 model User {
   id           String         @id @default(uuid())
-  googleId     String?        @unique
-  githubId     String?        @unique
   email        String         @unique
   username     String
   image        String?
   passwordHash String?
-  saasId       String
-  saas         SaaSConfig     @relation(fields: [saasId], references: [id])
-  tenants      Tenant[]
   createdAt    DateTime       @default(now())
+  googleId     String?        @unique
+  githubId     String?        @unique
+  saasId       String
   RefreshToken RefreshToken[]
+  tenants      Tenant[]
+  saas         SaaSConfig     @relation(fields: [saasId], references: [id])
 }
 
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -55,35 +49,35 @@ model RefreshToken {
 model ApiKey {
   id        String     @id @default(uuid())
   key       String     @unique
-  saas      SaaSConfig @relation(fields: [saasId], references: [id])
-  saasId    String
   createdAt DateTime   @default(now())
+  saasId    String
+  saas      SaaSConfig @relation(fields: [saasId], references: [id])
 }
 
 model SaaSConfig {
   id           String     @id @default(uuid())
   createdAt    DateTime   @default(now())
   name         String
-  description  String
-  category     Category
-  status       Status
   BillingPlans Json
   production   Boolean    @default(false)
+  appUserId    String
+  category     Category
+  description  String
+  status       Status
   ApiKey       ApiKey[]
   providers    Provider[]
-  User         User[]
   AppUser      AppUser    @relation(fields: [appUserId], references: [id])
-  appUserId    String
+  User         User[]
 }
 
 model Provider {
   id           String       @id @default(uuid())
   createdAt    DateTime     @default(now())
   saasConfigId String
-  saasConfig   SaaSConfig   @relation(fields: [saasConfigId], references: [id])
   type         ProviderType
   appId        String
   secretKey    String
+  saasConfig   SaaSConfig   @relation(fields: [saasConfigId], references: [id])
 
   @@unique([saasConfigId, type])
 }
@@ -101,67 +95,67 @@ model Plan {
 
 model Tenant {
   id            String          @id @default(uuid())
-  owner         User            @relation(fields: [ownerUserId], references: [id])
   ownerUserId   String
   name          String
-  plan          Plan            @relation(fields: [planId], references: [id])
   planId        String
-  usageEvents   UsageEvent[]
   createdAt     DateTime        @default(now())
   EmailTemplate EmailTemplate[]
-  StorageObject StorageObject[]
   Integration   Integration[]
+  StorageObject StorageObject[]
+  owner         User            @relation(fields: [ownerUserId], references: [id])
+  plan          Plan            @relation(fields: [planId], references: [id])
+  usageEvents   UsageEvent[]
   Webhook       Webhook[]
 }
 
 model UsageEvent {
   id        String   @id @default(uuid())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   tenantId  String
   eventType String
   quantity  Int
   timestamp DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 model EmailTemplate {
   id        String   @id @default(uuid())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   tenantId  String
   name      String
   subject   String
   body      String
   createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 model StorageObject {
   id          String   @id @default(uuid())
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   tenantId    String
   filename    String
   contentType String
   sizeBytes   Int
   s3Key       String
   createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 model Integration {
   id           String    @id @default(uuid())
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
   tenantId     String
   provider     String
   accessToken  String
   refreshToken String?
   expiresAt    DateTime?
   createdAt    DateTime  @default(now())
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
 }
 
 model Webhook {
   id        String   @id @default(uuid())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   tenantId  String
   targetUrl String
   secret    String
   createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 enum ProviderType {

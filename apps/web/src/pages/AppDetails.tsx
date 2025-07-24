@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   Edit3,
@@ -20,26 +20,72 @@ const AppDetails: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('id');
+  const [app, setApp] = useState<AppI>();
+
+  const [authProviders, setAuthProviders] = useState<AuthProviderI[]>([
+  ]);
+
+  useEffect(() => {
+    const getSaaSByID = async () => {
+      const authToken = localStorage.getItem("token-infrax-appuser");
+      const response = await fetch("http://localhost:3001/api/v1/saasconfig/getSaaSByID", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          id: appId
+        })
+      });
+      const status = response.status;
+      const data = await response.json();
+
+      if (status === 200) {
+        console.log(data.response);
+        setApp(data.response.saas);
+      }
+    }
+    const getProviders = async () => {
+      const authToken = localStorage.getItem("token-infrax-appuser");
+      const response = await fetch("http://localhost:3001/api/v1/saasconfig/getAllProviders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          id: appId
+        })
+      });
+      const status = response.status;
+      const data = await response.json();
+
+      if (status === 200) {
+        console.log(data.response);
+        const providers = data.response.map((provider: any) => {
+          return {
+            id: provider.id,
+            name: provider.type,
+            enabled: true,
+            clientID: provider.appId,
+            clientSecret: provider.secretKey,
+            icon: ''
+          };
+        })
+        setAuthProviders(providers);
+      }
+    }
+    getProviders();
+    getSaaSByID();
+  }, [])
 
   const [activeTab, setActiveTab] = useState('overview');
 
-  const [app] = useState<AppI>({
-    id: appId || '1',
-    name: 'TaskFlow Pro',
-    description: 'A comprehensive project management and team collaboration platform designed to streamline workflows and boost productivity.',
-    status: 'active',
-    createdAt: '2024-01-15',
-    users: 1250,
-    integrations: 8,
-    category: 'Productivity'
-  });
+  useEffect(() => {
+    console.log('aurh', authProviders);
+  }, [authProviders])
 
-  const [authProviders, setAuthProviders] = useState<AuthProviderI[]>([
-    { id: 'google', name: 'Google', enabled: true, clientId: 'client_123...', clientSecret: 'secret_456...', icon: '🔵' },
-    { id: 'github', name: 'GitHub', enabled: true, clientId: 'client_789...', clientSecret: 'secret_012...', icon: '⚫' },
-    { id: 'microsoft', name: 'Microsoft', enabled: false, icon: '🔷' },
-    { id: 'facebook', name: 'Facebook', enabled: false, icon: '🔵' },
-  ]);
 
   const [integrations, setIntegrations] = useState<IntegrationI[]>([
     { id: 'slack', name: 'Slack', description: 'Team communication', category: 'Communication', enabled: true, icon: '💬' },
@@ -72,9 +118,9 @@ const AppDetails: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab app={app} authProviders={authProviders} getStatusColor={getStatusColor} />;
+        return app && <OverviewTab app={app} authProviders={authProviders} getStatusColor={getStatusColor} />;
       case 'auth':
-        return <AuthenticationTab authProviders={authProviders} setAuthProviders={setAuthProviders} />;
+        return appId && <AuthenticationTab appId={appId} authProviders={authProviders} setAuthProviders={setAuthProviders} />;
       case 'integrations':
         return <IntegrationsTab integrations={integrations} setIntegrations={setIntegrations} />;
       case 'notifications':
@@ -89,32 +135,34 @@ const AppDetails: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Header */}
-      <div className="bg-gray-900/50 border-b border-gray-800 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-bold text-white">{app.name}</h1>
-                <p className="text-gray-400 mt-1">Configure your application settings</p>
+      {
+        app && <div className="bg-gray-900/50 border-b border-gray-800 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h1 className="text-3xl font-bold text-white">{app.name}</h1>
+                  <p className="text-gray-400 mt-1">Configure your application settings</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(app.status)}`}>
-                {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-              </span>
-              <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-                <Edit3 className="w-5 h-5" />
-              </button>
+              <div className="flex items-center space-x-3">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(app.status)}`}>
+                  {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                </span>
+                <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
+                  <Edit3 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      }
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

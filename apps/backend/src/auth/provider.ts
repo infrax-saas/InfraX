@@ -122,8 +122,6 @@ providerAuthRouter.post("/google/callback", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal Server Error" });
-  } finally {
-    await prisma.$disconnect();
   }
 });
 
@@ -243,8 +241,6 @@ providerAuthRouter.post("/github/callback", async (req: Request, res: Response) 
       message: "internal server error",
       response: null
     });
-  } finally {
-    await prisma.$disconnect();
   }
 
 })
@@ -304,8 +300,6 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
       message: "internal server error",
       resonse: null
     })
-  } finally {
-    await prisma.$disconnect();
   }
 
 })
@@ -387,8 +381,6 @@ providerAuthRouter.post("/signin", async (req: Request, res: Response) => {
       message: "internal server error",
       resonse: null
     })
-  } finally {
-    await prisma.$disconnect();
   }
 })
 
