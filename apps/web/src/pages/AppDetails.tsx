@@ -67,7 +67,7 @@ const AppDetails: React.FC = () => {
           return {
             id: provider.id,
             name: provider.type,
-            enabled: true,
+            enabled: provider.enabled,
             clientID: provider.appId,
             clientSecret: provider.secretKey,
             icon: ''

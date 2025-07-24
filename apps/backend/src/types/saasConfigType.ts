@@ -52,10 +52,22 @@ export const addProviderSchema = z.object({
   provider: ProviderConfigSchema
 })
 
+export const toggleProviderSchema = z.object({
+  id: z.string()
+})
+
 export type initializeSaasConfigOutputSchema = {
   message: string
 }
 
 export const getSaaSByIDConfigSchema = z.object({
   id: z.string()
+})
+
+
+export const updateProviderSchema = z.object({
+  providerId: z.string(),
+  clientID: z.string(),
+  clientSecret: z.string(),
+  type: ProviderEnum
 })

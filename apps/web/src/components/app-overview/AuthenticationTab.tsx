@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Eye, EyeOff, Save, Trash2, X } from 'lucide-react';
 import type { AuthProviderI } from '../../type';
@@ -17,23 +16,67 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
     clientID: '',
     clientSecret: ''
   });
-  const [provider, setProvider] = useState({
-    id: '',
-    clientID: '',
-    clientSecret: ''
-  });
+
+  const [providerUpdates, setProviderUpdates] = useState<
+    { providerId: string; clientID: string; clientSecret: string; type?: string }[]
+  >([]);
+
 
   const availableProviders = [
     { id: 'google', name: 'Google', icon: '🔵' },
     { id: 'github', name: 'GitHub', icon: '⚫' }
   ];
 
+  const getProviders = async () => {
+    const authToken = localStorage.getItem("token-infrax-appuser");
+    const response = await fetch("http://localhost:3001/api/v1/saasconfig/getAllProviders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        id: appId
+      })
+    });
+    const status = response.status;
+    const data = await response.json();
+
+    if (status === 200) {
+      console.log(data.response);
+      const providers = data.response.map((provider: any) => {
+        return {
+          id: provider.id,
+          name: provider.type,
+          enabled: provider.enabled,
+          clientID: provider.appId,
+          clientSecret: provider.secretKey,
+          icon: ''
+        };
+      })
+      setAuthProviders(providers);
+    }
+  }
+
   const toggleAuthProvider = async (providerId: string) => {
-    // TODO: Backend API call to toggle provider enabled/disabled status
-    // API: PUT /api/v1/saasconfig/toggleProvider
-    // Body: { appId, providerId, enabled: !currentStatus }
-    // On success: refetch authProviders or update state with response
-    console.log('Toggle provider:', providerId);
+    const authToken = localStorage.getItem("token-infrax-appuser");
+    const response = await fetch("http://localhost:3001/api/v1/saasconfig/toggleProvider", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        id: providerId
+      })
+    });
+    const status = response.status;
+    const data = await response.json();
+
+    if (status === 200) {
+      getProviders();
+      console.log(data);
+    }
   };
 
   const toggleSecretVisibility = (providerId: string) => {
@@ -43,14 +86,26 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
     }));
   };
 
-  const updateProvider = async (providerId: string, field: string, value: string) => {
-    // TODO: Backend API call to update provider configuration
-    // API: PUT /api/v1/saasconfig/updateProvider
-    // Body: { appId, providerId, field, value }
-    // Should update clientID or clientSecret in database
-    // On success: refetch authProviders or update state with response
-    console.log('Update provider:', providerId, field, value);
+
+  const updateProvider = (providerId: string, field: 'clientID' | 'clientSecret', value: string) => {
+    setProviderUpdates((prev) => {
+      const existing = prev.find((p) => p.providerId === providerId);
+      if (existing) {
+        return prev.map((p) =>
+          p.providerId === providerId ? { ...p, [field]: value } : p
+        );
+      } else {
+        const original = authProviders.find((p) => p.id === providerId);
+        return [...prev, {
+          providerId,
+          clientID: field === 'clientID' ? value : original?.clientID || '',
+          clientSecret: field === 'clientSecret' ? value : original?.clientSecret || '',
+          type: original?.name
+        }];
+      }
+    });
   };
+
 
   const handleAddProvider = async () => {
     if (!newProvider.type || !newProvider.clientID || !newProvider.clientSecret) {
@@ -93,18 +148,70 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
   };
 
   const removeProvider = async (providerId: string) => {
-    // TODO: Backend API call to remove provider
-    // API: DELETE /api/v1/saasconfig/removeProvider
-    // Body/Params: { appId, providerId }
-    // On success: refetch authProviders or remove from state
+
+    try {
+      const authToken = localStorage.getItem("token-infrax-appuser");
+      const response = await fetch("http://localhost:3001/api/v1/saasconfig/deleteProvider", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          id: providerId
+        })
+      });
+
+      const status = response.status;
+      const data = await response.json();
+
+      if (status === 200) {
+        console.log("Deleted successfully", data);
+        getProviders();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+
     console.log('Remove provider:', providerId);
   };
 
   const handleSaveConfiguration = async (providerId: string) => {
-    // TODO: Backend API call to save/update provider configuration
-    // API: PUT /api/v1/saasconfig/saveProviderConfig
-    // Body: { appId, providerId, clientID, clientSecret }
-    // Should validate and save the current form values to database
+
+    const update = providerUpdates.find(p => p.providerId === providerId);
+    if (!update) {
+      console.log("No updates to save");
+      return;
+    }
+
+    try {
+      const authToken = localStorage.getItem("token-infrax-appuser");
+      const response = await fetch("http://localhost:3001/api/v1/saasconfig/saveProviderConfig", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          providerId,
+          clientID: update.clientID,
+          clientSecret: update.clientSecret,
+          type: update.type,
+        })
+      });
+
+      const status = response.status;
+      const data = await response.json();
+
+      if (status === 200) {
+        console.log("Saved successfully", data);
+        setProviderUpdates(prev => prev.filter(p => p.providerId !== providerId)); // Clear update
+        getProviders();
+      }
+    } catch (error) {
+      console.error("Failed to save provider config", error);
+    }
+
     console.log('Save configuration for provider:', providerId);
   };
 
@@ -175,8 +282,11 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
                       </label>
                       <input
                         type="text"
-                        value={provider.clientID || ''}
-                        onChange={(e) => updateProvider(provider.id, 'clientId', e.target.value)}
+                        value={
+                          providerUpdates.find(p => p.providerId === provider.id)?.clientID
+                          ?? provider.clientID
+                        }
+                        onChange={(e) => updateProvider(provider.id, 'clientID', e.target.value)}
                         className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                         placeholder="Enter client ID"
                       />
@@ -188,7 +298,8 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
                       <div className="relative">
                         <input
                           type={showSecrets[provider.id] ? 'text' : 'password'}
-                          value={provider.clientSecret || ''}
+                          value={providerUpdates.find(p => p.providerId === provider.id)?.clientSecret
+                            ?? provider.clientSecret}
                           onChange={(e) => updateProvider(provider.id, 'clientSecret', e.target.value)}
                           className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                           placeholder="Enter client secret"
@@ -210,14 +321,14 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                     <div className="flex items-center space-x-3">
-                      <button 
+                      <button
                         onClick={() => handleSaveConfiguration(provider.id)}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center text-sm"
                       >
                         <Save className="w-4 h-4 mr-2" />
                         Save Configuration
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleTestConnection(provider.id)}
                         className="px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors text-sm"
                       >

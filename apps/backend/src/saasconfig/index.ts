@@ -1,8 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
-import { addProviderSchema, getSaaSByIDConfigSchema, initializeSaasConfigSchema } from "../types/saasConfigType"
+import { addProviderSchema, getSaaSByIDConfigSchema, initializeSaasConfigSchema, toggleProviderSchema, updateProviderSchema } from "../types/saasConfigType"
 import { requireAuth } from "../auth/authmiddleware";
 import { randomBytes } from "crypto";
+import { date } from "zod";
 
 const generateAPIKey = (): string => {
   return randomBytes(32).toString("hex");
@@ -312,6 +313,153 @@ saasRouter.post("/getAllProviders", requireAuth, async (req: Request, res: Respo
       code: 200,
       meesage: "providers found",
       response: providers
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      response: null
+    })
+  }
+})
+
+saasRouter.post("/toggleProvider", requireAuth, async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = toggleProviderSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+
+    const id = data.id;
+
+    const provider = await prisma.provider.findFirst({
+      where: {
+        id
+      }
+    })
+
+    if (!provider) {
+      return res.status(404).json({
+        code: 404,
+        message: 'provider not found',
+        response: null
+      })
+    }
+
+    const updateProvider = await prisma.provider.update({
+      where: {
+        id
+      },
+      data: {
+        enabled: !provider.enabled
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: "provider added",
+      response: updateProvider.id
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      response: null
+    })
+  }
+})
+
+saasRouter.post("/saveProviderConfig", requireAuth, async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = updateProviderSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+
+    const { providerId, clientSecret, clientID, type } = data;
+
+
+    const provider = await prisma.provider.findFirst({
+      where: {
+        id: providerId
+      }
+    })
+
+    if (!provider) {
+      return res.status(404).json({
+        code: 404,
+        message: 'provider not found',
+        response: null
+      })
+    }
+
+    const updateProvider = await prisma.provider.update({
+      where: {
+        id: providerId
+      },
+      data: {
+        appId: clientID,
+        secretKey: clientSecret,
+        type: type
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: "provider added",
+      response: updateProvider.id
+    })
+
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      response: null
+    })
+  }
+})
+
+saasRouter.post("/deleteProvider", requireAuth, async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = toggleProviderSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+
+    const deleteProvider = await prisma.provider.delete({
+      where: {
+        id: data.id
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: 'deleted provider',
+      response: deleteProvider.id
     })
 
   } catch (error) {
