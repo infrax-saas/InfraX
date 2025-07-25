@@ -4,7 +4,7 @@ export const Normal = () => {
 
   const signup = async () => {
     try {
-      await infrax.registerUser('krish12', 'password', 'krish.18.rahtor@nsut.ac.in');
+      await infrax.registerUser('krish12', 'password', '18.krish.rathor@gmail.com');
     } catch (err) {
       console.log(err);
     }

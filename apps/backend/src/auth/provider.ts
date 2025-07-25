@@ -7,6 +7,7 @@ import { authMiddleware } from "./authmiddleware";
 import { id } from "zod/locales";
 import { loginSchema, registerSchema, verifyOtpSchema } from "../types/authType";
 import bcrypt from "bcrypt";
+import { sendOtpWithRateLimit } from "../redis";
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
@@ -304,6 +305,7 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
 
     const otp = generateOtp();
     console.log('otp ======>>>>>>>>', otp);
+    sendOtpWithRateLimit(email, otp);
     // const hashedOtp = await bcrypt.hash(otp, 42);
 
     const user = await prisma.user.findFirst({
