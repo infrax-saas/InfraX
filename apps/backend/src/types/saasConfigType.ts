@@ -71,3 +71,7 @@ export const updateProviderSchema = z.object({
   clientSecret: z.string(),
   type: ProviderEnum
 })
+
+export const getAllUsersSchema = z.object({
+  saasId: z.string()
+})

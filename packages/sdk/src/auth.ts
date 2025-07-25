@@ -1,3 +1,5 @@
+import { showOtpPrompt } from "./otp";
+
 export interface InfraXAuthClientOptions {
   googleClientId: string;
   githubClientId: string;
@@ -22,21 +24,38 @@ export class InfraXAuthClient {
   }
 
   async registerUser(username: string, password: string, email: string) {
-    const response = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/register`, {
+    const signupRes = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify({
-        username,
-        password,
-        email,
-        saasId: this.appId
-      }),
+      body: JSON.stringify({ username, password, email, apiKey: this.appId }),
     });
-    const data = response.json();
-    return data;
+
+    if (!signupRes.ok) {
+      throw new Error("Signup failed");
+    }
+
+    const data = await signupRes.json();
+    console.log(data);
+
+    const otp = await showOtpPrompt();
+
+    const verifyRes = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/verifyOtp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ email, otp }),
+    });
+
+    if (!verifyRes.ok) {
+      throw new Error("OTP verification failed");
+    }
+
+    return await verifyRes.json();
   }
 
   async signinUser(email: string, password: string) {
@@ -166,6 +185,7 @@ export class InfraXAuthClient {
         code,
         codeVerifier,
         redirectUri: this.redirectUri,
+        apiKey: this.appId
       }),
     });
 
@@ -195,6 +215,21 @@ export class InfraXAuthClient {
     }
   }
 
+  async logout(): Promise<void> {
+    try {
+      const res = await fetch(`${this.backendBaseUrl}/api/v1/provider/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Logout failed");
+
+      localStorage.removeItem("infrax_state");
+      localStorage.removeItem("infrax_code_verifier");
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  }
 
   private generateRandomString(length: number): string {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";

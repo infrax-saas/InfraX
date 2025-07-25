@@ -33,7 +33,7 @@ export async function comparePassword(
 export const providerAuthRouter = Router();
 
 providerAuthRouter.post("/google/callback", async (req, res) => {
-  const { code, codeVerifier, redirectUri, saasid } = req.body;
+  const { code, codeVerifier, redirectUri, apiKey } = req.body;
   console.log(code, codeVerifier, redirectUri);
   console.log(redirectUri);
   if (!code || !codeVerifier || !redirectUri) {
@@ -42,9 +42,23 @@ providerAuthRouter.post("/google/callback", async (req, res) => {
 
   try {
 
+    const saas = await prisma.apiKey.findFirst({
+      where: {
+        key: apiKey
+      }
+    })
+
+    if (!saas) {
+      return res.status(401).json({
+        code: 401,
+        message: "Invalid api key",
+        response: null
+      })
+    }
+
     const provider = await prisma.provider.findFirst({
       where: {
-        saasConfigId: saasid,
+        saasConfigId: saas.saasId,
         type: "google"
       }
     })
@@ -97,7 +111,7 @@ providerAuthRouter.post("/google/callback", async (req, res) => {
           email,
           username: name,
           image,
-          saasId: saasid,
+          saasId: saas.saasId,
           RefreshToken: {
             create: {
               token: tokenData.refresh_token!,
@@ -259,7 +273,10 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
 
   const { data, error } = registerSchema.safeParse(req.body);
 
+  console.log(req.body);
+
   if (error) {
+    console.error("Validation error:", error.flatten());
     return res.status(400).json({
       code: 400,
       message: 'Invalid body',
@@ -267,21 +284,53 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
     })
   }
 
-  const { username, email, password, saasId } = data;
+  const { username, email, password, apiKey } = data;
 
   try {
 
+    const saas = await prisma.apiKey.findFirst({
+      where: {
+        key: apiKey
+      }
+    })
+
+    if (!saas) {
+      return res.status(401).json({
+        code: 401,
+        message: "Invalid api key",
+        response: null
+      })
+    }
+
     const otp = generateOtp();
-    const hashedOtp = await bcrypt.hash(otp, 42);
+    console.log('otp ======>>>>>>>>', otp);
+    // const hashedOtp = await bcrypt.hash(otp, 42);
 
     const user = await prisma.user.findFirst({
       where: {
         username,
-        saasId
+        saasId: saas.saasId
       }
     })
 
+    console.log('after getting user');
+
     if (user) {
+
+      console.log('inside user');
+
+      const jwtToken = jwt.sign({ sub: user.id, email: user.email }, process.env.JWT_SECRET!, {
+        expiresIn: "1h",
+      });
+
+      res.setHeader("Set-Cookie", cookie.serialize("infrax_token", jwtToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60,
+      }));
+
       return res.status(400).json({
         code: 400,
         message: `user already present`,
@@ -291,15 +340,29 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
 
     const hashedPassword = await hashPassword(password);
 
+    console.log('here');
+
     const createUser = await prisma.user.create({
       data: {
         username,
         email,
         passwordHash: hashedPassword,
-        saasId,
-        otp: hashedOtp
+        saasId: saas.saasId,
+        otp
       }
     })
+
+    const jwtToken = jwt.sign({ sub: createUser.id, email: createUser.email }, process.env.JWT_SECRET!, {
+      expiresIn: "1h",
+    });
+
+    res.setHeader("Set-Cookie", cookie.serialize("infrax_token", jwtToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60,
+    }));
 
     return res.status(200).json({
       code: 200,
@@ -355,7 +418,8 @@ providerAuthRouter.post("/verifyOtp", async (req: Request, res: Response) => {
       })
     }
 
-    const isVerified = bcrypt.compare(otp, user.otp);
+    // const isVerified = bcrypt.compare(otp, user.otp);
+    const isVerified = otp === user.otp;
 
     if (!isVerified) {
       return res.status(401).json({
@@ -403,12 +467,26 @@ providerAuthRouter.post("/signin", async (req: Request, res: Response) => {
   };
 
   try {
-    const { email, password, saasId } = data;
+    const { email, password, apiKey } = data;
+
+    const saas = await prisma.apiKey.findFirst({
+      where: {
+        key: apiKey
+      }
+    })
+
+    if (!saas) {
+      return res.status(401).json({
+        code: 401,
+        message: "Invalid api key",
+        response: null
+      })
+    }
 
     const user = await prisma.user.findFirst({
       where: {
         email,
-        saasId
+        saasId: saas.id
       }
     });
 
@@ -488,4 +566,23 @@ providerAuthRouter.get("/me", authMiddleware, async (req, res) => {
   res.json(user);
 });
 
+
+providerAuthRouter.post("/logout", (req: Request, res: Response) => {
+  res.setHeader(
+    "Set-Cookie",
+    cookie.serialize("infrax_token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(0), // Expire cookie immediately
+    })
+  );
+
+  return res.status(200).json({
+    code: 200,
+    message: "Logged out successfully",
+    response: null,
+  });
+});
 

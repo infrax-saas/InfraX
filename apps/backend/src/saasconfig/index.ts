@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../prisma/db";
-import { addProviderSchema, getSaaSByIDConfigSchema, initializeSaasConfigSchema, toggleProviderSchema, updateProviderSchema } from "../types/saasConfigType"
+import { addProviderSchema, getAllUsersSchema, getSaaSByIDConfigSchema, initializeSaasConfigSchema, toggleProviderSchema, updateProviderSchema } from "../types/saasConfigType"
 import { requireAuth } from "../auth/authmiddleware";
 import { randomBytes } from "crypto";
 import { date } from "zod";
@@ -460,6 +460,51 @@ saasRouter.post("/deleteProvider", requireAuth, async (req: Request, res: Respon
       code: 200,
       message: 'deleted provider',
       response: deleteProvider.id
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      response: null
+    })
+  }
+})
+
+saasRouter.post("/getAllUsersBySaaS", requireAuth, async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = getAllUsersSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    }
+    const { saasId } = data;
+
+    const users = await prisma.user.findMany({
+      where: {
+        saasId
+      }
+    })
+
+    const response = users.map(user => {
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        verified: user.verified,
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: 'all users found',
+      response
     })
 
   } catch (error) {
