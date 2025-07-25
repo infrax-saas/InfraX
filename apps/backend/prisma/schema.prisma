@@ -25,6 +25,8 @@ model User {
   username     String
   image        String?
   passwordHash String?
+  otp          String?
+  verified     Boolean        @default(false)
   createdAt    DateTime       @default(now())
   googleId     String?        @unique
   githubId     String?        @unique

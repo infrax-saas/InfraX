@@ -70,7 +70,7 @@ const AppDetails: React.FC = () => {
             enabled: provider.enabled,
             clientID: provider.appId,
             clientSecret: provider.secretKey,
-            icon: ''
+            icon: getAuthProviderIcon(provider.type)
           };
         })
         setAuthProviders(providers);
@@ -79,6 +79,18 @@ const AppDetails: React.FC = () => {
     getProviders();
     getSaaSByID();
   }, [])
+
+  const getAuthProviderIcon = (type: 'google' | 'github'): string => {
+    switch (type) {
+      case 'google':
+        return 'https://authjs.dev/img/providers/google.svg';
+      case 'github':
+        return 'https://authjs.dev/img/providers/github.svg';
+      default:
+        return '';
+    }
+  };
+
 
   const [activeTab, setActiveTab] = useState('overview');
 

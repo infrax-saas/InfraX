@@ -51,7 +51,7 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
           enabled: provider.enabled,
           clientID: provider.appId,
           clientSecret: provider.secretKey,
-          icon: ''
+          icon: getAuthProviderIcon(provider.type)
         };
       })
       setAuthProviders(providers);
@@ -224,6 +224,19 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
     console.log('Test connection for provider:', providerId);
   };
 
+
+  const getAuthProviderIcon = (type: 'google' | 'github'): string => {
+    switch (type) {
+      case 'google':
+        return 'https://authjs.dev/img/providers/google.svg';
+      case 'github':
+        return 'https://authjs.dev/img/providers/github.svg';
+      default:
+        return '';
+    }
+  };
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -251,7 +264,9 @@ const AuthenticationTab: React.FC<AuthenticationTabProps> = ({ appId, authProvid
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center border border-gray-700 mr-4">
-                    <span className="text-2xl">{provider.icon}</span>
+                    {provider.icon && (
+                      <img src={provider.icon} alt={`${provider.name} logo`} className="w-6 h-6" />
+                    )}
                   </div>
                   <div>
                     <h4 className="text-white font-semibold text-lg">{provider.name}</h4>

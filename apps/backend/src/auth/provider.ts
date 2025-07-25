@@ -1,17 +1,27 @@
 import { prisma } from "../prisma/db";
 import jwt from "jsonwebtoken";
-import { auth, CodeChallengeMethod, OAuth2Client } from 'google-auth-library';
+import { OAuth2Client } from 'google-auth-library';
 import { Router, type Request, type Response } from "express";
 import cookie from "cookie";
 import { authMiddleware } from "./authmiddleware";
 import { id } from "zod/locales";
-import { loginSchema, registerSchema } from "../types/authType";
+import { loginSchema, registerSchema, verifyOtpSchema } from "../types/authType";
 import bcrypt from "bcrypt";
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
   return await bcrypt.hash(password, saltRounds);
 }
+
+export function generateOtp(length: number = 6): string {
+  const digits = '0123456789';
+  let otp = '';
+  for (let i = 0; i < length; i++) {
+    otp += digits[Math.floor(Math.random() * digits.length)];
+  }
+  return otp;
+}
+
 
 export async function comparePassword(
   plainPassword: string,
@@ -38,7 +48,7 @@ providerAuthRouter.post("/google/callback", async (req, res) => {
         type: "google"
       }
     })
-    if (!provider) {
+    if (!provider || !provider.enabled) {
       return res.status(400).json({
         code: 400,
         message: `google auth not supported in saas with id: ${id}`,
@@ -261,6 +271,9 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
 
   try {
 
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 42);
+
     const user = await prisma.user.findFirst({
       where: {
         username,
@@ -283,7 +296,8 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
         username,
         email,
         passwordHash: hashedPassword,
-        saasId
+        saasId,
+        otp: hashedOtp
       }
     })
 
@@ -302,6 +316,78 @@ providerAuthRouter.post("/signup", async (req: Request, res: Response) => {
     })
   }
 
+})
+
+providerAuthRouter.post("/verifyOtp", async (req: Request, res: Response) => {
+  try {
+
+    const { data, error } = verifyOtpSchema.safeParse(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid body',
+        response: null
+      })
+    };
+
+    const { email, otp } = data;
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email
+      }
+    })
+
+    if (!user) {
+      return res.status(404).json({
+        code: 404,
+        message: "user not found",
+        response: null
+      })
+    }
+
+    if (!user.otp) {
+      return res.status(404).json({
+        code: 404,
+        message: "otp not found",
+        response: null
+      })
+    }
+
+    const isVerified = bcrypt.compare(otp, user.otp);
+
+    if (!isVerified) {
+      return res.status(401).json({
+        code: 401,
+        message: "otp incorrect",
+        response: null
+      })
+    }
+
+    const veifyUser = await prisma.user.update({
+      where: {
+        email
+      },
+      data: {
+        verified: true
+      }
+    })
+
+    return res.status(200).json({
+      code: 200,
+      message: "verified user",
+      response: veifyUser.id
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      code: 500,
+      message: "internal server error",
+      resonse: null
+    })
+  }
 })
 
 providerAuthRouter.post("/signin", async (req: Request, res: Response) => {
